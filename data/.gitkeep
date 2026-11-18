@@ -1,0 +1,2 @@
+# Keeps data/ in git. The SQLite store is created here at runtime (php bin/seed.php)
+# and is git-ignored.

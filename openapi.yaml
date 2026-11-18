@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Work Orders REST API
+  version: 1.0.0
+  description: >
+    A small, framework-free REST API for managing work orders (commesse):
+    CRUD, bearer-token auth with roles, validation, pagination, filtering and sorting.
+  license:
+    name: MIT
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local dev server
+security:
+  - bearerAuth: []
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string, example: workorders-rest-api }
+  /api/work-orders:
+    get:
+      summary: List work orders
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1, minimum: 1 } }
+        - { in: query, name: per_page, schema: { type: integer, default: 20, maximum: 100 } }
+        - { in: query, name: status, schema: { $ref: "#/components/schemas/Status" } }
+        - { in: query, name: priority, schema: { $ref: "#/components/schemas/Priority" } }
+        - { in: query, name: q, schema: { type: string }, description: "Search in title/customer/code" }
+        - { in: query, name: sort, schema: { type: string, default: id } }
+        - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+      responses:
+        "200":
+          description: A paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkOrder" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      summary: Create a work order (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkOrderInput" }
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location: { schema: { type: string }, description: URL of the new resource }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkOrder" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /api/work-orders/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      summary: Get one work order
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WorkOrder" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Update a work order (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkOrderInput" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/WorkOrder" } } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    patch:
+      summary: Partially update a work order (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkOrderInput" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/WorkOrder" } } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      summary: Delete a work order (admin)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Status:
+      type: string
+      enum: [open, in_progress, on_hold, done, cancelled]
+    Priority:
+      type: string
+      enum: [low, medium, high, urgent]
+    WorkOrder:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        code: { type: string, example: WO-2026-001 }
+        title: { type: string, example: CNC line retrofit }
+        customer: { type: string, example: Acme Manufacturing }
+        status: { $ref: "#/components/schemas/Status" }
+        priority: { $ref: "#/components/schemas/Priority" }
+        assignee: { type: string, nullable: true, example: davide }
+        hours_estimated: { type: number, example: 40 }
+        hours_spent: { type: number, example: 22 }
+        due_date: { type: string, format: date, nullable: true, example: "2026-12-15" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    WorkOrderInput:
+      type: object
+      required: [code, title, customer]
+      properties:
+        code: { type: string, maxLength: 40 }
+        title: { type: string, maxLength: 200 }
+        customer: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        priority: { $ref: "#/components/schemas/Priority" }
+        assignee: { type: string, nullable: true }
+        hours_estimated: { type: number, minimum: 0 }
+        hours_spent: { type: number, minimum: 0 }
+        due_date: { type: string, format: date, nullable: true }
+    PageMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        total_pages: { type: integer }
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            status: { type: integer }
+            message: { type: string }
+            details:
+              type: object
+              additionalProperties: { type: string }
+  responses:
+    Unauthorized:
+      description: Missing/invalid API key
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: Authenticated but not allowed (needs admin role)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Resource not found
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: Duplicate code
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    ValidationError:
+      description: Validation failed
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

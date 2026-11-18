@@ -1,0 +1,25 @@
+{
+    "name": "davidealovisio/workorders-rest-api",
+    "description": "A small, framework-free REST API for work orders (commesse): CRUD, bearer-token RBAC, validation, pagination and an OpenAPI 3 contract.",
+    "type": "project",
+    "license": "MIT",
+    "keywords": ["rest", "api", "php", "openapi", "sqlite", "crud"],
+    "authors": [
+        { "name": "Davide Alovisio", "homepage": "https://davidealovisioportfolio.com" }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-pdo_sqlite": "*"
+    },
+    "autoload": {
+        "psr-4": { "WorkOrders\\": "src/" }
+    },
+    "scripts": {
+        "test": "php tests/run-tests.php",
+        "seed": "php bin/seed.php",
+        "serve": "php -S 127.0.0.1:8080 public/index.php"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
